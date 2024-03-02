@@ -66,13 +66,16 @@ export async function deleteImage(imageId: string){
 
 // get image
 
-export async function getImageById(imageId: string){
-    try{
-        await connectToDatabase();
-        const image = await Image.findById(imageId);
-        if (!image) throw new Error('Image not found');
-        return JSON.parse(JSON.stringify(image));
-    }catch(error){
-        handleError(error);
+export async function getImageById(imageId: string) {
+    try {
+      await connectToDatabase();
+  
+      const image = await populateUser(Image.findById(imageId));
+  
+      if(!image) throw new Error("Image not found");
+  
+      return JSON.parse(JSON.stringify(image));
+    } catch (error) {
+      handleError(error)
     }
-}
+  }
