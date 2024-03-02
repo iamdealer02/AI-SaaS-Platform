@@ -27,6 +27,8 @@ import { useState, useTransition } from "react"
 import { AspectRatioKey, debounce, deepMergeObjects } from "@/lib/utils"
 import { set } from "mongoose"
 import MediaUploader from "./MediaUploader"
+import TransformedImage from "./TransformedImage"
+import { updateCredits } from "@/lib/actions/user.action"
  
 export const formSchema = z.object({
   title : z.string(),
@@ -68,6 +70,8 @@ const TransformationForm = ({action, data = null, userId, type, creditBalance, c
         console.log(values)
       }
  
+
+      
     const onTransformHandler =() => {
         setisTransforming(true)
         setTransformationConfig(
@@ -76,7 +80,7 @@ const TransformationForm = ({action, data = null, userId, type, creditBalance, c
         )
         setnewTransformation(null)
         startTransition(async () => {
-            // await updateCredits()
+            await updateCredits(userId, -1)
         })
     }
 
@@ -203,6 +207,15 @@ const TransformationForm = ({action, data = null, userId, type, creditBalance, c
 
                     />
                 )}/>
+                <TransformedImage
+                  image = {image}
+                  type = {type}
+                  title = {form.getValues().title}
+                  isTransforming = {isTransforming}
+                  setisTransforming = {setisTransforming}
+                  transformationConfig = {transformationConfig}
+                  />
+
           </div>
           <div className="flex flex-col gap-4 mt-7">
             <Button
