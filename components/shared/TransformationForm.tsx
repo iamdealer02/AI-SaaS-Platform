@@ -29,6 +29,9 @@ import { set } from "mongoose"
 import MediaUploader from "./MediaUploader"
 import TransformedImage from "./TransformedImage"
 import { updateCredits } from "@/lib/actions/user.action"
+import { getCldImageUrl } from "next-cloudinary"
+import { addImage, updateImage } from "@/lib/actions/image.action"
+import { useRouter } from "next/navigation"
  
 export const formSchema = z.object({
   title : z.string(),
@@ -48,7 +51,7 @@ const TransformationForm = ({action, data = null, userId, type, creditBalance, c
     const [transformationConfig, setTransformationConfig] = useState(config)
     const[isPending, startTransition] = useTransition();
     const [newTransformation, setnewTransformation] = useState<Transformations | null>(null);
-
+    const router = useRouter() 
 
     const initialValues = data && action == 'Update' ?{
         title: data?.title,
@@ -64,10 +67,73 @@ const TransformationForm = ({action, data = null, userId, type, creditBalance, c
       })
      
       // 2. Define a submit handler.
-      function onSubmit(values: z.infer<typeof formSchema>) {
-        // Do something with the form values.
-        // ✅ This will be type-safe and validated.
-        console.log(values)
+      async function onSubmit(values: z.infer<typeof formSchema>) {
+        setisSubmitting(true)
+        if (data || image){
+          const transformationUrl = getCldImageUrl({
+            width: image?.width,
+            height: image?.height,
+            src: image?.publicId,
+            ...transformationConfig
+          })
+
+          const imageData  = {
+            title : values.title,
+            publicId: image.publicId,
+            transformationType: type,
+            width: image?.width,
+            height: image?.height,
+            config: transformationConfig,
+            secureURL: image?.secureURL,
+            transformationURL : transformationUrl,
+            aspectRatio : image?.aspectRatio,
+            prompt: values.prompt,
+            color: values.color
+
+          }
+          // create different submittion actions
+
+          if( action === 'Add'){
+            // adding imgaes to the database
+            try{
+              const newImage = await addImage({
+                image: imageData,
+                userId,
+                path: '/'
+              })
+              if (newImage){
+                form.reset()
+                setImage(data)
+                router.push(`/transformations/${newImage._id}`)
+              }
+            }catch(error){
+              console.log(error)
+            }
+          }
+          
+          if (action == 'Update'){
+            try{
+              const updatedImage = await  updateImage({
+                image: {
+                  ...imageData,
+                  _id: data._id
+                
+                },
+                userId,
+                path: `/transformations/${data._id}`
+              })
+              if (updatedImage){
+                form.reset()
+                setImage(data)
+                router.push(`/transformations/${updatedImage._id}`)
+              }
+            }catch(error){
+              console.log(error)
+            }
+          }
+
+        }
+        setisSubmitting(false)
       }
  
 
@@ -127,7 +193,7 @@ const TransformationForm = ({action, data = null, userId, type, creditBalance, c
             />
             {/* selecting aspect Ration */}
 
-          </form>
+       
           {/* this only renders when the type is fill */}
           {
             type === 'fill' && (
@@ -225,9 +291,15 @@ const TransformationForm = ({action, data = null, userId, type, creditBalance, c
                 onClick={onTransformHandler}
                 
             > {isTransforming ? "Transforming.." : 'Apply Transformation'} </Button>
-          <Button type="submit" className="submit-button capitalize" disabled={isSubmitting}
-          > Submit </Button>
+        <Button 
+            type="submit"
+            className="submit-button capitalize"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Submitting...' : 'Save Image'}
+          </Button> 
             </div>
+          </form>
         </Form>
       )
 }
